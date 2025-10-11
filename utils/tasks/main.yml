@@ -1,0 +1,5 @@
+---
+# tasks file for utils
+- name: fail if called directly
+  fail:
+    msg: "This playbook is not intended to be run directly. Include it in another playbook."

@@ -1,0 +1,18 @@
+- name: (DOWNLOAD-SSH) Get file metadata via stat
+  stat:
+    path: "{{ path }}"
+    remote_src: true
+  delegate_to: "{{ host }}"
+  become: true
+  register: file_stat
+
+- name: (DOWNLOAD-SSH) Verify file exists and has size
+  set_fact:
+    verified: "{{ file_stat.stat.exists and file_stat.stat.size | int > 0 }}"
+    metadata:
+      protocol: "ssh"
+      host: "{{ host }}"
+      path: "{{ path }}"
+      size: "{{ file_stat.stat.size }}"
+      modified: "{{ file_stat.stat.mtime }}"
+      mode: "{{ file_stat.stat.mode }}"

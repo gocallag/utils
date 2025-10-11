@@ -1,0 +1,20 @@
+- name: (DOWNLOAD-FTP) Get FTP file metadata using curl
+  shell: |
+    curl -sI "{{ target_url }}" | awk '
+      BEGIN { size=""; mod="" }
+      /^Content-Length:/ { size=$2 }
+      /^Last-Modified:/ { mod=$0 }
+      END { print size, mod }
+    '
+  register: ftp_meta
+  changed_when: false
+
+- name: (DOWNLOAD-FTP) Parse FTP metadata
+  set_fact:
+    ftp_parts: "{{ ftp_meta.stdout.split(' ', 1) }}"
+    verified: "{{ ftp_parts[0] | int > 0 }}"
+    metadata:
+      protocol: "ftp"
+      url: "{{ target_url }}"
+      size: "{{ ftp_parts[0] | int }}"
+      last_modified: "{{ ftp_parts[1] | default('N/A') }}"
