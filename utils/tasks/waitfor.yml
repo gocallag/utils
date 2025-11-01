@@ -12,12 +12,12 @@
   block:
     - set_fact:
         ponder: "{{ ponder | default(false) }}"
-      delegate_to: localhost
+      delegate_to: "{{ run_on | default('localhost') }}"
 
     - name: (UTILS-WAITFOR) Set the retry count for connection
       set_fact:
         retry_count: "{{ 1 if retry_count is undefined else retry_count|int + 1 }}"
-      delegate_to: localhost
+      delegate_to: "{{ run_on | default('localhost') }}"  
 
     - name: (UTILS-WAITFOR) Wait for admin port to be available (after 60 seconds)
       wait_for:
@@ -25,7 +25,7 @@
         host: "{{ wait_host_ip }}"
         delay: 60
         timeout: 900
-      delegate_to: localhost
+      delegate_to: "{{ run_on | default('localhost') }}"
 
     - name: (UTILS-WAITFOR) do a setup on the target host
       setup:
