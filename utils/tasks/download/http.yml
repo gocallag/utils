@@ -4,6 +4,8 @@
     method: HEAD
     return_content: false
   register: http_meta
+  tags:
+    - always
 
 - name: (DOWNLOAD-HTTP) Get content length and status
   set_fact:
@@ -14,3 +16,5 @@
       content_length: "{{ http_meta.content_length }}"
       last_modified: "{{ http_meta.last_modified }}"
       status: "{{ http_meta.status }}"
+  tags:
+    - always

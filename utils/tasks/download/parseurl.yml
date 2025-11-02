@@ -1,6 +1,8 @@
 - name: (DOWNLOAD-PARSEURL) Extract URL components using regex_findall
   set_fact:
     url_parts: "{{ target_url | regex_findall('(?P<protocol>\\w+)://(?:(?P<user>[^@]+)@)?(?P<host>[^:/]+)(?::(?P<port>\\d+))?(?P<path>/.*)') }}"
+  tags:
+      - always
 
 - name: (DOWNLOAD-PARSEURL) Set structured facts from regex match
   set_fact:
@@ -9,3 +11,5 @@
     host: "{{ url_parts[0][2] }}"
     port: "{{ url_parts[0][3] | default('22') }}"
     path: "{{ url_parts[0][4] }}"
+  tags:
+      - always
