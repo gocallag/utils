@@ -1,26 +1,38 @@
 - name: (DOWNLOAD-META) Parse target URL safely
   include_tasks: parseurl.yml
+  tags:
+      - always
 
 - name: (DOWNLOAD-META) Include ssh related task
   include_tasks: download/ssh.yml
   when: protocol == 'ssh' or protocol == 'sftp'
+  tags:
+      - always
 
 - name: (DOWNLOAD-META) Include HTTP task
   include_tasks: download/http.yml
   when: protocol == 'http' or protocol == 'https'
+  tags:
+      - always
 
 
 - name: (DOWNLOAD-META) Include FTP task
   include_tasks: download/ftp.yml
   when: protocol == 'ftp'
+  tags:
+      - always
 
 - name: (DOWNLOAD-META) Display retrieved metadata
   debug:
     msg: "(DOWNLOAD-META) Retrieved metadata for {{ metadata }}"
   when:  verified
+  tags:
+      - always
 
 - name: (DOWNLOAD-META) fail if we can't get metadata
   fail:
     msg: "(DOWNLOAD-META) Failed to verify the URL or retrieve metadata for {{ target_url }}"
   when: not verified
+  tags:
+      - always
 
