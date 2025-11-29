@@ -11,7 +11,7 @@
     - always
 - name: (DOWNLOAD) check for verified stamp file
   stat:
-    name: "{{ download_dest }}/{{ download_url | basename }}.verified"
+    path: "{{ download_dest }}/{{ download_url | basename }}.verified"
   register: verified_stamp_stat
   tags:
     - always
