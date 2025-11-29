@@ -21,7 +21,7 @@
     - "{{ download_dest | dirname }}"
 - name: (DOWNLOAD) check for verified stamp file
   stat:
-    path: "{{ download_dest }}/{{ download_url | basename }}.verified"
+    path: "{{ download_dest | dirname }}/{{ download_url | basename }}.verified"
   register: verified_stamp_stat
   tags:
     - always
@@ -88,7 +88,7 @@
         - always
     - name: (DOWNLOAD) create verified stamp file
       file:
-        path: "{{ download_dest }}/{{ download_url | basename }}.verified"
+        path: "{{ download_dest | dirname }}/{{ download_url | basename }}.verified"
         state: touch
       tags:
         - always
