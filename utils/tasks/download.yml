@@ -9,74 +9,94 @@
     success_msg: "(DOWNLOAD): All required variables appear to be defined."
   tags:
     - always
-
-- debug: msg="(DOWNLOAD) Downloading from {{ download_url }} to {{ download_dest }} with checksum {{ download_checksum | default('none') }}"
-
-- name: (DOWNLOAD) create required directories for downloading file
-  file:
-    path: "{{ file }}"
-    state: directory
-  tags:
-    - always
-  loop_control:
-    loop_var: file
-  loop:
-    - "{{ download_dest | dirname }}"
-
-- name: (DOWNLOAD) Get remote metadata
-  include_tasks: download/meta.yml
-  tags:
-    - always
-  vars:
-    target_url: "{{ download_url }}"
-
-
-- name: (DOWNLOAD) Check if destination file exists and get stats
+- name: (DOWNLOAD) check for verified stamp file
   stat:
-    name: "{{ download_dest }}"
-  register: downloadfile_stat
+    name: "{{ download_dest }}/{{ download_url | basename }}.verified"
+  register: verified_stamp_stat
   tags:
     - always
+- block:
+    - debug: msg="(DOWNLOAD) Downloading from {{ download_url }} to {{ download_dest }} with checksum {{ download_checksum | default('none') }}"
 
-- debug: msg="(DOWNLOAD) Existing file size {{ downloadfile_stat.stat.size | default(0) }} bytes, target size {{ metadata.content_length | default(0) }} bytes"
+    - name: (DOWNLOAD) create required directories for downloading file
+      file:
+        path: "{{ file }}"
+        state: directory
+      tags:
+        - always
+      loop_control:
+        loop_var: file
+      loop:
+        - "{{ download_dest | dirname }}"
+
+    - name: (DOWNLOAD) Get remote metadata
+      include_tasks: download/meta.yml
+      tags:
+        - always
+      vars:
+        target_url: "{{ download_url }}"
+
+
+    - name: (DOWNLOAD) Check if destination file exists and get stats
+      stat:
+        name: "{{ download_dest }}"
+      register: downloadfile_stat
+      tags:
+        - always
+
+    - debug: msg="(DOWNLOAD) Existing file size {{ downloadfile_stat.stat.size | default(0) }} bytes, target size {{ metadata.content_length | default(0) }} bytes"
+      tags:
+        - always
+
+    - name: (DOWNLOAD) download file if we're not happy with existing file (continuing as needed)
+      ansible.builtin.command:
+        cmd: >
+          curl -L -C - --retry 3 --connect-timeout 30 --max-time 6000
+          -o "{{ download_dest }}" "{{ download_url }}"
+      register: curl_result
+      retries: 2
+      delay: 10
+      until: curl_result.rc == 0
+      changed_when: curl_result.rc == 0
+      failed_when: curl_result.rc != 0
+      when:  downloadfile_stat.stat.exists != true or metadata.content_length | int != downloadfile_stat.stat.size | int
+      tags:
+        - always
+
+    - name: (DOWNLOAD) Get existing file checksum
+      ansible.builtin.command:
+        cmd: "sha256sum {{ download_dest }}"
+      register: download_checksum_result
+      changed_when: false
+      failed_when: download_checksum_result.rc != 0 and download_checksum_result.rc != 1
+      when: download_checksum is defined and downloadfile_stat.stat.exists != true or metadata.content_length | int == downloadfile_stat.stat.size | int
+      tags:
+        - always
+
+    - set_fact:
+        file_checksum: "{{ download_checksum_result.stdout.split()[0] }}"
+      when: download_checksum is defined and downloadfile_stat.stat.exists != true or metadata.content_length | int == downloadfile_stat.stat.size | int
+      tags:
+        - always
+
+    - name: (DOWNLOAD) fail if complete file has checksum mismatch 
+      fail:
+        msg: "(DOWNLOAD) Existing file checksum ({{ file_checksum }}) does not match expected checksum ({{ download_checksum }})."
+      when: download_checksum is defined and file_checksum is defined and file_checksum != download_checksum
+      tags:
+        - always
+    - name: (DOWNLOAD) create verified stamp file
+      file:
+        path: "{{ download_dest }}/{{ download_url | basename }}.verified"
+        state: touch
+      tags:
+        - always
+
+  when: verified_stamp_stat.stat.exists != true
   tags:
     - always
-
-- name: (DOWNLOAD) download file if we're not happy with existing file (continuing as needed)
-  ansible.builtin.command:
-    cmd: >
-      curl -L -C - --retry 3 --connect-timeout 30 --max-time 6000
-      -o "{{ download_dest }}" "{{ download_url }}"
-  register: curl_result
-  retries: 2
-  delay: 10
-  until: curl_result.rc == 0
-  changed_when: curl_result.rc == 0
-  failed_when: curl_result.rc != 0
-  when:  downloadfile_stat.stat.exists != true or metadata.content_length | int != downloadfile_stat.stat.size | int
+- block:
+    - debug: msg="(DOWNLOAD) {{ download_url | basename }} is already verified. Skipping download."
+  when: verified_stamp_stat.stat.exists = true
   tags:
     - always
-
-- name: (DOWNLOAD) Get existing file checksum
-  ansible.builtin.command:
-    cmd: "sha256sum {{ download_dest }}"
-  register: download_checksum_result
-  changed_when: false
-  failed_when: download_checksum_result.rc != 0 and download_checksum_result.rc != 1
-  when: download_checksum is defined and downloadfile_stat.stat.exists != true or metadata.content_length | int == downloadfile_stat.stat.size | int
-  tags:
-    - always
-
-- set_fact:
-    file_checksum: "{{ download_checksum_result.stdout.split()[0] }}"
-  when: download_checksum is defined and downloadfile_stat.stat.exists != true or metadata.content_length | int == downloadfile_stat.stat.size | int
-  tags:
-    - always
-
-- name: (DOWNLOAD) fail if complete file has checksum mismatch 
-  fail:
-    msg: "(DOWNLOAD) Existing file checksum ({{ file_checksum }}) does not match expected checksum ({{ download_checksum }})."
-  when: download_checksum is defined and file_checksum is defined and file_checksum != download_checksum
-  tags:
-    - always
-
