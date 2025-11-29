@@ -98,6 +98,6 @@
     - always
 - block:
     - debug: msg="(DOWNLOAD) {{ download_url | basename }} is already verified. Skipping download."
-  when: verified_stamp_stat.stat.exists = true
+  when: verified_stamp_stat.stat.exists == true
   tags:
     - always
