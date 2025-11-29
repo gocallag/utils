@@ -9,6 +9,16 @@
     success_msg: "(DOWNLOAD): All required variables appear to be defined."
   tags:
     - always
+- name: (DOWNLOAD) create required directories for downloading file
+  file:
+    path: "{{ file }}"
+    state: directory
+  tags:
+    - always
+  loop_control:
+    loop_var: file
+  loop:
+    - "{{ download_dest | dirname }}"
 - name: (DOWNLOAD) check for verified stamp file
   stat:
     path: "{{ download_dest }}/{{ download_url | basename }}.verified"
@@ -18,16 +28,7 @@
 - block:
     - debug: msg="(DOWNLOAD) Downloading from {{ download_url }} to {{ download_dest }} with checksum {{ download_checksum | default('none') }}"
 
-    - name: (DOWNLOAD) create required directories for downloading file
-      file:
-        path: "{{ file }}"
-        state: directory
-      tags:
-        - always
-      loop_control:
-        loop_var: file
-      loop:
-        - "{{ download_dest | dirname }}"
+
 
     - name: (DOWNLOAD) Get remote metadata
       include_tasks: download/meta.yml
